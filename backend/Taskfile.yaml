@@ -1,0 +1,19 @@
+version: 3
+
+tasks:
+  dev:
+    dotenv: [".env.example"]
+    cmds:
+      - docker compose -f docker-compose-dev.yml up -d
+      - npm run start:dev
+  dev-migrations:
+    dotenv: [".env.example"]
+    cmds:
+      - npm run typeorm migration:run
+  ci-build:
+    cmds:
+      - docker build -t ci:latest .
+  ci-lint:
+    cmds:
+      - npm run prettier:check
+      # TODO: Add ESlint after fixes

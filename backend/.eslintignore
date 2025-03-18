@@ -1,0 +1,6 @@
+node_modules
+dist
+.env
+.env.example
+nest-cli.json
+test/swaggere2e.ts

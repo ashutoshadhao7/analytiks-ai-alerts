@@ -1,0 +1,16 @@
+dist/
+node_modules/
+**/.DS_Store
+.prettierignore
+.env
+.env.example
+.gitignore
+package-lock.json
+.eslintignore
+nest-cli.json
+documentations/
+package.json
+**/*.png
+**/*.sh
+.dockerignore
+Taskfile.yaml
