@@ -25,11 +25,15 @@ export class CronJobsService {
   async sendEmailAlerts() {
     const brands: BrandWithLocationResponse =
       await this.hasuraService.getBrandsWithLocations();
-
+    let cnt = 0;
+    let loopLength = 0;
     for (const brand of brands.brandList) {
-      if (!brand.hasAlerts) continue;
+      if(cnt) break;
+      // console.log('starting cron job');
+      // if (!brand.hasAlerts) continue;
       const differences: DifferenceInterface[] = [];
       for (const location of brand.locations) {
+        loopLength++;
         const { from, to, from2, to2 } = this.getWeekComparisonDates();
         const variables: GetVisitsByDay = {
           id: location.id,
@@ -39,53 +43,61 @@ export class CronJobsService {
           from2,
           to2,
         };
+        console.log('variables', variables);
         const brandId = brand.id;
         const data =
           await this.hasuraService.getVisitsByDayWithComparison(variables);
         const compare = this.compareAndNotify(
           data,
-          brand.alertsDeviationThreshold,
+          // brand.alertsDeviationThreshold,
+          1,
         );
         if (compare) {
           differences.push(compare);
         }
       }
       if (differences.length > 0) {
-        const { userList } = await this.hasuraService.getUsersWithBrandId(
-          brand.id,
-        );
-        if (userList.length > 0) {
-          const user = userList[0];
+        cnt++;
+        // console.log('difference found', differences);
+        // const { userList } = await this.hasuraService.getUsersWithBrandId(
+        //   brand.id,
+        // );
+        // if (userList.length > 0) {
+        // const user = userList[0];
 
-          const csvContent = this.getFile(differences, brand.name);
-          const csvBase64 = Buffer.from(csvContent).toString('base64');
-          const emailData: EmailDataInterface = {
-            to: user.email,
-            from: {
-              name: 'Presence Analytics',
-              email: 'info@analytics.ai', // TODO: Need to change this
+        const csvContent = this.getFile(differences, brand.name);
+        const csvBase64 = Buffer.from(csvContent).toString('base64');
+        const emailData: EmailDataInterface = {
+          // to: user.email,
+          to: 'ashutosh.adhao@infillion.com',
+          from: {
+            name: 'Presence Analytics',
+            email: 'it@analytiks.ai', // TODO: Need to change this
+          },
+          subject: 'Alerts for your locations',
+          text: `Please find the attached CSV file for the locations with deviations.`,
+          attachments: [
+            {
+              content: csvBase64,
+              filename: 'data.csv',
+              type: 'text/csv',
+              disposition: 'attachment',
             },
-            subject: 'Alerts for your locations',
-            attachments: [
-              {
-                content: csvBase64,
-                filename: 'data.csv',
-                type: 'text/csv',
-                disposition: 'attachment',
-              },
-            ],
-          };
-          await this.emailService.addEmailToQueue(emailData);
-        }
+          ],
+        };
+        const res = await this.emailService.addEmailToQueue(emailData);
+        console.log('Email sent:', emailData);
+        // }
       }
-
-      return {
-        brands: brands.brandList.length,
-        locations: brands.brandList
-          .map((brand) => brand.locations.length)
-          .reduce((a, b) => a + b, 0),
-      };
     }
+    console.log('cron job completed', cnt);
+    return {
+      loopLength: loopLength,
+      brands: brands.brandList.length,
+      locations: brands.brandList
+        .map((brand) => brand.locations.length)
+        .reduce((a, b) => a + b, 0),
+    };
   }
 
   getWeekComparisonDates(): {
@@ -118,12 +130,17 @@ export class CronJobsService {
   ): DifferenceInterface | null {
     const currentDate = DateTime.now()
       .setZone('America/New_York')
-      .toFormat('yyyy-MM-dd');
+      .toFormat('cccc');
+
+    console.log({ currentDate });
 
     const currentWeek = data.location.presenceAnalytics.visitsByDay.dataPoints;
     const previousWeek =
       data.locationComparison.presenceAnalytics.visitsByDay.dataPoints;
 
+    // console.log('Data Received:', data.location.presenceAnalytics.visitsByDay);
+    // console.log('Current Week:', currentWeek);
+    // console.log('Previous Week:', previousWeek);
     let difference: DifferenceInterface | null = null;
 
     const currentDayData = currentWeek.find(
@@ -133,6 +150,9 @@ export class CronJobsService {
       (entry) => entry.key === currentDate,
     );
 
+    console.log('Current Day Data:', currentDayData);
+    console.log('Previous Day Data:', previousDayData);
+
     if (currentDayData && previousDayData) {
       const division =
         (Math.abs(currentDayData.value - previousDayData.value) /
@@ -140,6 +160,9 @@ export class CronJobsService {
         100;
       const direction =
         currentDayData.value > previousDayData.value ? 'Positive' : 'Negative';
+
+      console.log('Division:', division);
+      console.log('Threshold:', threshold);
 
       if (division > threshold) {
         difference = {

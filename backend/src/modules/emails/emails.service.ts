@@ -28,6 +28,7 @@ export class EmailsService {
           emailData?.from?.email ||
           configService.getValue('SENDGRID_FROM_ADDRESS'),
       },
+      attachments: emailData.attachments, // Optional attachments
       subject: emailData.subject || 'No Subject Provided',
       content: [
         {
@@ -38,7 +39,7 @@ export class EmailsService {
       templateId: emailData.templateId, // Optional templateId
       dynamicTemplateData: emailData.dynamicTemplateData, // Optional dynamic data for the template
     };
-
+    console.log('Sending email:', mailData);
     try {
       const res = await sgMail.send(mailData);
       return res;

@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import { CronJobsService } from './cron-jobs.service';
 import { ApiTags } from '@nestjs/swagger';
 
-@Controller('rhombus')
+@Controller('corn-job')
 @ApiTags('Cron Jobs')
 export class CronJobsController {
   constructor(private readonly cornJobsService: CronJobsService) {}
